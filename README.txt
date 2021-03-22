@@ -1,6 +1,6 @@
 # Maze-Game
 
-This program was developed by Kenny Ge and Anuj Jain from Edgemont HS and Varun ___ from Dublin HS
+This program was developed by Kenny Ge and Anuj Jain from Edgemont HS and Varun Venkatesh from Dublin HS
 
 It is a procedurally generated maze in which you use WASD + Mouse to navigate around the maze to find the Arctic Fox (that we downloaded through EchoAR’s API). Once you find the fox, the game should end. The game has a multiplayer component, where players can explore the same map together. 
 
