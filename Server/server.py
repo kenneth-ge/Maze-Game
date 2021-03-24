@@ -7,16 +7,10 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 #Modified from https://youtu.be/-3B1v-K1oXE
 
-server = 'localhost'
+server = '' #leaving it blank will bind it to the system ip address
 port = 5555
 
-server_ip = socket.gethostbyname(server)
-
-try:
-    s.bind((server, port))
-
-except socket.error as e:
-    print(str(e))
+s.bind((server, port))
 
 s.listen(2)
 print("Waiting for a connection")
