@@ -124,11 +124,12 @@ public class Shader {
 		glUniformMatrix4fv(getUniform(name), false, toFloatBuffer(matrix));
 	}
 	
+	private static float[] array = new float[16];
+	private static FloatBuffer fb = BufferUtils.createFloatBuffer(16);
+	
 	public static FloatBuffer toFloatBuffer(Matrix4f matrix){
-		float[] array = new float[16];
 		matrix.get(array);
 		
-		FloatBuffer fb = BufferUtils.createFloatBuffer(array.length);
 		fb.put(array);
 		fb.flip();
 		

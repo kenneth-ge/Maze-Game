@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.StringTokenizer;
 
+import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
@@ -40,6 +41,7 @@ public class Game {
 	
 	public float[][] randomR, randomG, randomB;
 	public float[][] floorR, floorG, floorB;
+	public float wallR, wallG, wallB;
 
 	public Random random = new Random();
 
@@ -49,6 +51,8 @@ public class Game {
 	public BufferedWriter bw;
 	
 	public float otherX = -1, otherZ = -1;
+	
+	Matrix4f projection;
 	
 	public Game(InetAddress addr) {
 		if(addr != null) {
@@ -88,11 +92,13 @@ public class Game {
 		floor = new Texture("res/floor.png");
 		shader = new Shader("shaders/shader.vert", "shaders/shader.frag");
 
+		projection = MathUtils.createProjectionMatrix(Initializer.width, Initializer.height, 70, 0.01f, 100f);
+		
 		shader.enable();
 		shader.setUniformMat4f("projectionMatrix",
-				MathUtils.createProjectionMatrix(Initializer.width, Initializer.height, 70, 0.01f, 100f));
+				projection);
 		
-		size = random.nextInt(15) + 5;
+		size = random.nextInt(25) + 5;
 		walls = new int[size][size]; // 0 means there is a wall; a nonzero number represents an empty space
 		//Integer arrays fill with 0 by default
 		
@@ -119,6 +125,10 @@ public class Game {
 			}
 		}
 		
+		wallR = random.nextFloat();
+		wallG = random.nextFloat();
+		wallB = random.nextFloat();
+		
 		shader.disable();
 
 		// Note that the rows and columns are the starting position and the ending
@@ -127,7 +137,8 @@ public class Game {
 		recurse2(size - 1, size - 1);
 		
 		System.out.println("Loading echoAR");
-		fox = EchoARLoader.loadModel();
+		//fox = EchoARLoader.loadModel();
+		fox = cube;
 	}
 	
 	private int[] dRow = new int[] {1, 0, -1, 0},
@@ -263,7 +274,12 @@ public class Game {
         glDisableClientState(GL_VERTEX_ARRAY);
 	}
 	
+	Matrix4f transformation = new Matrix4f();
+	FrustumIntersection frustum = new FrustumIntersection();
+	Matrix4f projView = new Matrix4f();
+	
 	public void render() {
+		frustum.set(projView.set(projection).mul(Camera.viewMatrix));
 		GL11.glClearColor(135f / 255f, 206f / 255f, 235f / 255f, 1);
 		
 		shader.enable();
@@ -271,7 +287,7 @@ public class Game {
 		shader.setUniform3f("camPos", Camera.getPos());
 		
 		//Render target
-		shader.setUniformMat4f("transformationMatrix", new Matrix4f().translate(size, 0, size));
+		shader.setUniformMat4f("transformationMatrix", transformation.identity().translate(size, 0, size));
 		shader.setUniform1f("addR", 10000);
 		shader.setUniform1f("addG", 10000);
 		shader.setUniform1f("addB", 10000);
@@ -280,12 +296,14 @@ public class Game {
 		shader.setUniform1f("addG", 0);
 		shader.setUniform1f("addB", 0);
 		
-		Matrix4f transformation = new Matrix4f();
 		//Render floor
 		floor.bind();
 		for(int x = 1; x <= size; x++) {
 			for(int z = 1; z <= size; z++) {
-				transformation = new Matrix4f();
+				if(!frustum.testAab(x - 1, 0, z - 1, x + 1, 0, z + 1))
+					continue;
+				
+				transformation.identity();
 				transformation.translate(x, -1, z);
 				shader.setUniformMat4f("transformationMatrix", transformation);
 				shader.setUniform1f("randomR", randomR[x - 1][z - 1]);
@@ -297,40 +315,58 @@ public class Game {
 		floor.unbind();
 		
 		texture.bind();
+		
+		shader.setUniform1f("randomR", wallR);
+		shader.setUniform1f("randomG", wallG);
+		shader.setUniform1f("randomB", wallB);
+		
 		//Render outer boundary
 		for(int i = 0; i < size + 2; i++) {
 			for(int y = 0; y < 3; y++){
 				{
 					float posX = i;
 					float posZ = 0;
-					transformation = new Matrix4f();
-					transformation.translate(posX, y, posZ);
-					shader.setUniformMat4f("transformationMatrix", transformation);
-					cube.draw();
+					
+					if(frustum.testAab(posX - 1, y - 1, posZ - 1, posX + 1, y + 1, posZ + 1)) {
+						transformation.identity();
+						transformation.translate(posX, y, posZ);
+						shader.setUniformMat4f("transformationMatrix", transformation);
+						cube.draw();
+					}
 				}
 				{
 					float posX = 0;
 					float posZ = i;
-					transformation = new Matrix4f();
-					transformation.translate(posX, y, posZ);
-					shader.setUniformMat4f("transformationMatrix", transformation);
-					cube.draw();
+					
+					if(frustum.testAab(posX - 1, y - 1, posZ - 1, posX + 1, y + 1, posZ + 1)) {
+						transformation.identity();
+						transformation.translate(posX, y, posZ);
+						shader.setUniformMat4f("transformationMatrix", transformation);
+						cube.draw();
+					}
+					
 				}
 				{
 					float posX = i;
 					float posZ = size + 1;
-					transformation = new Matrix4f();
-					transformation.translate(posX, y, posZ);
-					shader.setUniformMat4f("transformationMatrix", transformation);
-					cube.draw();
+					
+					if(frustum.testAab(posX - 1, y - 1, posZ - 1, posX + 1, y + 1, posZ + 1)) {
+						transformation.identity();
+						transformation.translate(posX, y, posZ);
+						shader.setUniformMat4f("transformationMatrix", transformation);
+						cube.draw();
+					}
 				}
 				{
 					float posX = size + 1;
 					float posZ = i;
-					transformation = new Matrix4f();
-					transformation.translate(posX, y, posZ);
-					shader.setUniformMat4f("transformationMatrix", transformation);
-					cube.draw();
+					
+					if(frustum.testAab(posX - 1, y - 1, posZ - 1, posX + 1, y + 1, posZ + 1)) {
+						transformation.identity();
+						transformation.translate(posX, y, posZ);
+						shader.setUniformMat4f("transformationMatrix", transformation);
+						cube.draw();
+					}
 				}
 			}
 		}
@@ -338,8 +374,11 @@ public class Game {
 		for(int x = 1; x <= size; x++) {
 			for(int z = 1; z <= size; z++) {
 				for(int y = 0; y < 3; y++) {
+					if(!frustum.testAab(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1))
+						continue;
+					
 					if(walls[x - 1][z - 1] == 0) {
-						transformation = new Matrix4f();
+						transformation.identity();
 						
 						//set the position
 						transformation.translate(x, y, z);
@@ -367,11 +406,13 @@ public class Game {
 		shader.setUniform1f("addG", 0);
 		shader.setUniform1f("addB", 0);
 		//System.out.println("Other position: " + otherX + " " + otherZ);
-		shader.setUniformMat4f("transformationMatrix", new Matrix4f().scale(1).translate(otherX, 1, otherZ));
+		shader.setUniformMat4f("transformationMatrix", transformation.identity().scale(1).translate(otherX, 1, otherZ));
 		
 		cube.draw();
 		
 		shader.disable();
+		
+		//System.gc();
 	}
 	
 	public boolean valid(Vector3f position) {
@@ -443,7 +484,7 @@ public class Game {
 				this.otherX = Float.parseFloat(tok.nextToken());
 				this.otherZ = Float.parseFloat(tok.nextToken());
 				
-				Thread.sleep(50);
+				Thread.sleep(15);
 		}
 		}catch(Exception e) {
 			e.printStackTrace();

@@ -60,6 +60,8 @@ public class Initializer {
 	public Initializer(String[] args) {
 		if(args.length >= 1) {
 			try {
+				System.out.println(args[0]);
+				
 				ip = InetAddress.getByName(args[0]);
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
